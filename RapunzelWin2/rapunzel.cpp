@@ -304,16 +304,17 @@ int sub_main( int argc , char *argv[] ){
   if( pCap == 0 ){
     printf("Capture failed\n");
   }
-  //cvSetCaptureProperty( pCap, CV_CAP_PROP_FRAME_WIDTH, 720 );
+  //cvSetCaptureProperty( pCap, CV_CAP_PROP_FRAME_WIDTH, 640 );
   //cvSetCaptureProperty( pCap, CV_CAP_PROP_FRAME_HEIGHT, 480 );
-  cvSetCaptureProperty( pCap, CV_CAP_PROP_FRAME_HEIGHT, 240 );
+  cvSetCaptureProperty( pCap, CV_CAP_PROP_FRAME_HEIGHT, 360 );
   pCam = cvQueryFrame( pCap );
   IplImage **pCams  = (IplImage**)malloc(sizeof(IplImage*) * Z_VAR_CNT );
   int Cw, Ch;
   for( i = 0 ; i < Z_VAR_CNT ; i++ ){
-	  Cw = (int)(pCam ->width *2.0/(i+3.0));
-	  Ch = (int)(pCam ->height*2.0/(i+3.0));
+	Cw = (int)(pCam ->width *2.0/(i+3.0));
+	Ch = (int)(pCam ->height*2.0/(i+3.0));
     pCams [i] = cvCreateImage( cvSize(Cw, Ch), IPL_DEPTH_8U, 3 );
+	//pCams [i] = cvCreateImage( cvSize(640, 480), IPL_DEPTH_8U, 3 );
     cvResize( pCam, pCams[i], CV_INTER_LINEAR );
   }
 #endif //CAM_EN
