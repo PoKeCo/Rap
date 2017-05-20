@@ -34,7 +34,7 @@
 
 #define Z_VAR_CNT 16
 
-#if 0
+#if 1
 #define IMG_HEIGHT 1080
 #define IMG_WIDTH  1920
 #define RAP_CNT  400
@@ -44,17 +44,19 @@
 #define RAP_CNT  200
 #endif
 
-#define FRAME_CNT (24*60)
-#define FRAME_RATE 24
+#define FRAME_CNT (24*210)
+#define FRAME_RATE 60
 
 typedef struct _Rap{
   double x;
   double y;
   double z;
   double a;  
+  double v;  
   int iz;
   double th;
-  double dth;  
+  double dth; 
+  int flag;
   CvScalar col;
 } Rap;
 typedef struct _RapList{
@@ -68,6 +70,8 @@ void RapSet( Rap *rap, double x, double y, double z, int iz, double th, double d
   rap->z   = z;
   rap->iz  = iz;
   rap->th  = th;
+  rap->v   = 0;
+  
   rap->dth = M_PI/60.0*0.5 ;
   int i;
   for( i = 0; i < 4 ; i ++ ){
@@ -87,20 +91,32 @@ void RapRand( Rap *rap, int i ){
 	  IMG_HEIGHT* frand()+IMG_HEIGHT,//511+(rand()&511),
 	  iz+2.0,
 	  iz,
-	  (rand()&7)/8.0*2*M_PI,
+	  frand()*2*M_PI,//(rand()&7)/8.0*2*M_PI,
 	  frand()*0.5+0.5 * M_PI/60.0*0.5,
 	  CV_RGB( 255, 128, 0 ) );
 }
 
 void RapMove( Rap *rap ){
   double zs = 64.0;
-  rap->x -= 4.0/rap->z*(sin(rap->th));
-  rap->y -= 16.0/rap->z * 0.25;
-  rap->z -= 0;
-  //rap->th+= M_PI/60.0*0.5;
-  rap->th += rap->dth ;
+  if( rap->flag ){
+	  rap->x -= 4.0/rap->z*(sin(rap->th));
+	  rap->y -= 16.0/rap->z * 0.25;
+	  rap->z -= 0;
+	  //rap->th+= M_PI/60.0*0.5;
+	  rap->th += rap->dth ;	  
+  }else{  
+	  rap->v = rap->v + 2.0;	   
+	  rap->x -= 0;
+	  rap->y = rap->y + rap->v ;
+	  if( rap->y > 1080 ){
+		  rap->y = rap->y - rap->v;
+		  rap->v = - 0.8 * rap->v ; 
+	  }
+	  rap->z -= 0;
+  }
   if( rap->y+4*zs/rap->z < 0 ){
-    RapRand( rap, -1 );
+	rap->flag = 0;
+	//RapRand( rap, -1 );
   }
 
   //rap->col.val[2] = 32.0*sin( rap->th*10.0 ) + (255.0-32.0);
@@ -126,6 +142,7 @@ void RapListCreate( RapList *pRL, int count ){
   pRL->rap = (Rap*)malloc( sizeof(Rap) * count );
   for( i = 0 ; i < count ; i ++ ){
     RapRand( &pRL->rap[i], i );
+	pRL->rap[i].flag= 1;
   }
 } 
 
