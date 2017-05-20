@@ -30,17 +30,18 @@
 /*****************************************************************************/
 #define frand() ((double)rand()/RAND_MAX)
 #define LIST_CNT 1000
-#define RAP_CNT  400
 
 
 #define Z_VAR_CNT 16
 
-#if 1
+#if 0
 #define IMG_HEIGHT 1080
 #define IMG_WIDTH  1920
+#define RAP_CNT  400
 #else
 #define IMG_HEIGHT 512
 #define IMG_WIDTH  1024
+#define RAP_CNT  200
 #endif
 
 #define FRAME_CNT (24*60)
