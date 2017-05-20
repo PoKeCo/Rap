@@ -45,7 +45,7 @@
 #endif
 
 #define FRAME_CNT (24*210)
-#define FRAME_RATE 60
+#define FRAME_RATE 24
 
 typedef struct _Rap{
   double x;
@@ -115,8 +115,8 @@ void RapMove( Rap *rap ){
 	  rap->z -= 0;
   }
   if( rap->y+4*zs/rap->z < 0 ){
-	rap->flag = 0;
-	//RapRand( rap, -1 );
+	//rap->flag = 0;
+	RapRand( rap, -1 );
   }
 
   //rap->col.val[2] = 32.0*sin( rap->th*10.0 ) + (255.0-32.0);
