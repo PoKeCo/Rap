@@ -47,6 +47,8 @@
 #define FRAME_CNT (24*210)
 #define FRAME_RATE 24
 
+#define CAM_EN 0
+
 typedef struct _Rap{
   double x;
   double y;
@@ -78,11 +80,10 @@ void RapSet( Rap *rap, double x, double y, double z, int iz, double th, double d
     rap->col.val[i] = col.val[i];
   }
 }
-void RapRand( Rap *rap, int i ){
+void RapRand( Rap *rap, int i, int cnt ){
   int iz;
   if ( i >= 0 ){
-    //iz =(int)(  ( i * 7.0 )/(double)RAP_CNT );
-	iz =(int)(  ( i * Z_VAR_CNT )/(double)RAP_CNT );
+    iz =(int)(  ( i * Z_VAR_CNT )/(double)cnt );
   } else {
     iz = rap->iz;
   }
@@ -107,7 +108,7 @@ void RapMove( Rap *rap ){
 	  rap->th += rap->dth ;	  
   }else{  
 	  rap->v = rap->v + 2.0;	   
-	  rap->x -= 0;
+	  rap->x -= rap->dth-0.5 * M_PI/60.0*0.5;
 	  rap->y = rap->y + rap->v ;
 	  if( rap->y > 1080 ){
 		  rap->y = rap->y - rap->v;
@@ -117,7 +118,7 @@ void RapMove( Rap *rap ){
   }
   if( rap->y+4*zs/rap->z < 0 ){
 	//rap->flag = 0;
-	RapRand( rap, -1 );
+	  RapRand( rap, -1, 1 );
   }
 
   //rap->col.val[2] = 32.0*sin( rap->th*10.0 ) + (255.0-32.0);
@@ -142,8 +143,8 @@ void RapListCreate( RapList *pRL, int count ){
   pRL->count = count ;
   pRL->rap = (Rap*)malloc( sizeof(Rap) * count );
   for( i = 0 ; i < count ; i ++ ){
-    RapRand( &pRL->rap[i], i );
-	pRL->rap[i].flag= 1;
+    RapRand( &pRL->rap[i], i, count );
+	  pRL->rap[i].flag= 1;
   }
 } 
 
@@ -271,12 +272,13 @@ void SetBackground( IplImage *pImg, CvScalar c1, CvScalar c2, double a ){
 int sub_main( int argc , char *argv[] ){
 
   CvSize sz = cvSize( IMG_WIDTH, IMG_HEIGHT );
-  int i ;
+  int i, j ;
   IplImage *pPink   = cvLoadImage("pink1.bmp",CV_LOAD_IMAGE_UNCHANGED  );
   IplImage *pBlue   = cvLoadImage("blue1.bmp",CV_LOAD_IMAGE_UNCHANGED  );
   IplImage *pDeka   = cvLoadImage("pyachideka2.jpg",CV_LOAD_IMAGE_UNCHANGED  );
   //IplImage *pBlue   = cvLoadImage("test.bmp",CV_LOAD_IMAGE_UNCHANGED  );
-
+  
+  //cvNamedWindow("Cap",CV_WINDOW_AUTOSIZE);
   IplImage **pPinks = (IplImage**)malloc(sizeof(IplImage*) * Z_VAR_CNT );
   IplImage **pBlues = (IplImage**)malloc(sizeof(IplImage*) * Z_VAR_CNT );
   IplImage **pDekas = (IplImage**)malloc(sizeof(IplImage*) * Z_VAR_CNT );
@@ -295,28 +297,40 @@ int sub_main( int argc , char *argv[] ){
     pDekas[i] = cvCreateImage( cvSize(Dw, Dh), IPL_DEPTH_8U, 3 );
     cvResize( pDeka, pDekas[i], CV_INTER_LINEAR );
   }
-  
+#if CAM_EN
+  IplImage *pCam;
+  CvCapture *pCap=0;
+  pCap = cvCreateCameraCapture( 0 ) ;
+  if( pCap == 0 ){
+    printf("Capture failed\n");
+  }
+  //cvSetCaptureProperty( pCap, CV_CAP_PROP_FRAME_WIDTH, 720 );
+  //cvSetCaptureProperty( pCap, CV_CAP_PROP_FRAME_HEIGHT, 480 );
+  cvSetCaptureProperty( pCap, CV_CAP_PROP_FRAME_HEIGHT, 240 );
+  pCam = cvQueryFrame( pCap );
+  IplImage **pCams  = (IplImage**)malloc(sizeof(IplImage*) * Z_VAR_CNT );
+  int Cw, Ch;
+  for( i = 0 ; i < Z_VAR_CNT ; i++ ){
+	  Cw = (int)(pCam ->width *2.0/(i+3.0));
+	  Ch = (int)(pCam ->height*2.0/(i+3.0));
+    pCams [i] = cvCreateImage( cvSize(Cw, Ch), IPL_DEPTH_8U, 3 );
+    cvResize( pCam, pCams[i], CV_INTER_LINEAR );
+  }
+#endif //CAM_EN
+
   IplImage *pSrcImg = cvCreateImage( sz, IPL_DEPTH_8U, 3 );
 
   if( pSrcImg == 0 ){
     printf("Error\n");
   }
   
-  CvCapture *cap=0;
-  //cap = cvCreateCameraCapture( 0 ) ;
-  //if( cap == 0 ){
-  //  printf("Capture failed\n");
-  // }
-  //cvSetCaptureProperty( cap, CV_CAP_PROP_FRAME_WIDTH, 720 );
-  //cvSetCaptureProperty( cap, CV_CAP_PROP_FRAME_HEIGHT, 480 );
-  //cvNamedWindow("Cap",CV_WINDOW_AUTOSIZE);
 
   CvVideoWriter *pVW;
   pVW = cvCreateVideoWriter ("rapunzel.avi", CV_FOURCC ('D', 'I', 'V', 'X'), FRAME_RATE, sz,1);
   RapList RL, RLD;
 
   RapListCreate( &RL, RAP_CNT );
-  RapListCreate( &RLD, 1 );
+  RapListCreate( &RLD, Z_VAR_CNT );
   RLD.rap[0].z  = 7;
   RLD.rap[0].iz = 7;
   double a;
@@ -326,33 +340,62 @@ int sub_main( int argc , char *argv[] ){
 	  //printf("a=%lf\n",a);
     SetBackground( pSrcImg, CV_RGB( 23, 55, 94 ), CV_RGB( 0, 0, 0 ), a );
 	
-
     //DrawRap( pSrcImg, &RL );
     //DrawRap2( pSrcImg, &RL, pPinks );
+
     DrawRap3( pSrcImg, &RL, pPinks, pBlues );
+    //DrawRap2( pSrcImg, &RLD, pDekas );
+
+#if CAM_EN
+    cvQueryFrame( pCap );
+    pCam = cvQueryFrame( pCap );
+    for( j = 0 ; j < Z_VAR_CNT ; j++ ){
+      cvResize( pCam, pCams[j], CV_INTER_LINEAR );
+    }
+    //Paste( pSrcImg, pCam, 0 , 0, 1.0 );
+    DrawRap2( pSrcImg, &RLD, pCams );
+  	cvWriteFrame( pVW, pSrcImg );
+#else //CAM_EN
     DrawRap2( pSrcImg, &RLD, pDekas );
+#endif //CAM_EN
+
+
     RapListMove( &RL );
     RapListMove( &RLD );
     cvShowImage( "Show", pSrcImg );
-  	cvWriteFrame( pVW, pSrcImg );
+    
     //if( cvWaitKey(1000/24) >= 0 ) break;
     if( cvWaitKey(1) >= 0 ) break;
     
   }
   cvDestroyWindow("Show");
-
+  
   RapListRelease( &RL  );
   RapListRelease( &RLD );
-  cvReleaseVideoWriter( &pVW );
+
   cvReleaseImage( &pSrcImg );
+
   cvReleaseImage( &pPink );
   cvReleaseImage( &pBlue );
+  cvReleaseImage( &pDeka );
+  //cvReleaseImage( &pCam  );
   for( i = 0 ; i < Z_VAR_CNT ; i++ ){
     cvReleaseImage( &pPinks[i] );
     cvReleaseImage( &pBlues[i] );
+    cvReleaseImage( &pDekas[i] );
   }
   free( pPinks );
   free( pBlues );
-  
+  free( pDekas );
+
+#if CAM_EN
+  cvReleaseCapture( &pCap );
+  cvReleaseVideoWriter( &pVW );
+  for( i = 0 ; i < Z_VAR_CNT ; i++ ){
+    cvReleaseImage( &pCams [i] );
+  }
+  free( pCams  );  
+#endif//CAM_EN
+
   return 0;
 }
