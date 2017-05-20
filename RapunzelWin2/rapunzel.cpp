@@ -47,7 +47,7 @@
 #define FRAME_CNT (24*210)
 #define FRAME_RATE 24
 
-#define CAM_EN 0
+#define CAM_EN 1
 
 typedef struct _Rap{
   double x;
