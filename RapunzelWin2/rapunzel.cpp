@@ -32,7 +32,7 @@
 #define LIST_CNT 1000
 
 
-#define Z_VAR_CNT 16
+#define Z_VAR_CNT 10
 
 #if 1
 #define IMG_HEIGHT 1080
@@ -81,7 +81,8 @@ void RapSet( Rap *rap, double x, double y, double z, int iz, double th, double d
 void RapRand( Rap *rap, int i ){
   int iz;
   if ( i >= 0 ){
-    iz =(int)(  ( i * 7.0 )/(double)RAP_CNT );
+    //iz =(int)(  ( i * 7.0 )/(double)RAP_CNT );
+	iz =(int)(  ( i * Z_VAR_CNT )/(double)RAP_CNT );
   } else {
     iz = rap->iz;
   }
