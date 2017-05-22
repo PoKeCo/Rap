@@ -188,7 +188,7 @@ void PasteEz( IplImage *pImg, IplImage *pPat, int x, int y, double a ){
 	int Pye = ( y+Ph > Ih )?(Ih-y):Ph;
 	int IR, IG, IB ;
 	int PR, PG, PB ;
-	double X;
+	//double X;
 	//double Y;
 	//double Z;
 
@@ -321,6 +321,7 @@ int sub_main( int argc , char *argv[] ){
 	IplImage *pPink   = cvLoadImage("pink1.bmp",CV_LOAD_IMAGE_UNCHANGED  );
 	IplImage *pBlue   = cvLoadImage("blue1.bmp",CV_LOAD_IMAGE_UNCHANGED  );
 	IplImage *pDeka   = cvLoadImage("pyachideka2.jpg",CV_LOAD_IMAGE_UNCHANGED  );
+  IplImage *pIshi   = cvLoadImage("ishikirin.jpg",CV_LOAD_IMAGE_UNCHANGED  );
 	//IplImage *pBlue   = cvLoadImage("test.bmp",CV_LOAD_IMAGE_UNCHANGED  );
 
 	
@@ -331,16 +332,23 @@ int sub_main( int argc , char *argv[] ){
 	for( i = 0 ; i < Z_VAR_CNT ; i++ ){
 		Pw = (int)(pPink->width *2.0/(i+3.0));
 		Ph = (int)(pPink->height*2.0/(i+3.0));
-		Bw = (int)(pBlue->width *2.0/(i+3.0));
-		Bh = (int)(pBlue->height*2.0/(i+3.0));
-		Dw = (int)(pDeka->width *2.0/(i+3.0));
-		Dh = (int)(pDeka->height*2.0/(i+3.0));
 		pPinks[i] = cvCreateImage( cvSize(Pw, Ph), IPL_DEPTH_8U, 3 );
 		cvResize( pPink, pPinks[i], CV_INTER_LINEAR );
+		Bw = (int)(pBlue->width *2.0/(i+3.0));
+		Bh = (int)(pBlue->height*2.0/(i+3.0));
 		pBlues[i] = cvCreateImage( cvSize(Bw, Bh), IPL_DEPTH_8U, 3 );
 		cvResize( pBlue, pBlues[i], CV_INTER_LINEAR );
-		pDekas[i] = cvCreateImage( cvSize(Dw, Dh), IPL_DEPTH_8U, 3 );
-		cvResize( pDeka, pDekas[i], CV_INTER_LINEAR );
+    if( !(i & 1) ){
+		  Dw = (int)(pDeka->width *2.0/(i+3.0));
+		  Dh = (int)(pDeka->height*2.0/(i+3.0));
+		  pDekas[i] = cvCreateImage( cvSize(Dw, Dh), IPL_DEPTH_8U, 3 );
+		  cvResize( pDeka, pDekas[i], CV_INTER_LINEAR );
+    }else{
+		  Dw = (int)(pIshi->width *2.0/(i+3.0));
+		  Dh = (int)(pIshi->height*2.0/(i+3.0));
+		  pDekas[i] = cvCreateImage( cvSize(Dw, Dh), IPL_DEPTH_8U, 3 );
+		  cvResize( pIshi, pDekas[i], CV_INTER_LINEAR );
+    }
 	}
 #if MON_EN
 	cvNamedWindow("Mon",CV_WINDOW_AUTOSIZE);
@@ -436,6 +444,7 @@ int sub_main( int argc , char *argv[] ){
 	cvReleaseImage( &pPink );
 	cvReleaseImage( &pBlue );
 	cvReleaseImage( &pDeka );
+  cvReleaseImage( &pIshi );
 	//cvReleaseImage( &pCam  );
 	for( i = 0 ; i < Z_VAR_CNT ; i++ ){
 		cvReleaseImage( &pPinks[i] );
