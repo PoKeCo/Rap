@@ -16,6 +16,9 @@
 //#include <opencv/cv.h>
 //#include <opencv/highgui.h>
 #include "stdafx.h"
+#include <string.h>
+
+
 
 #ifdef M_PI
 #define PI M_PI
@@ -26,6 +29,14 @@
 
 //#define MAX( A, B ) (((A)>(B))?(A):(B))
 //#define MIN( A, B ) (((A)<(B))?(A):(B))
+
+
+
+#if _WIN32 || _WIN64
+#include "windows.h"
+#endif //_WIN32 || _WIN64
+
+//#define FULL_SCREEN
 
 /*****************************************************************************/
 #define frand() ((double)rand()/RAND_MAX)
@@ -47,10 +58,12 @@
 #endif
 
 #define FRAME_CNT (24*210)
+//#define FRAME_CNT (240)
 #define FRAME_RATE 24
 
+
 #define CAM_EN 0
-#define VW_EN 1
+#define VW_EN 0
 #define MON_EN 1
 #define FALL_MODE 1
 
@@ -95,13 +108,13 @@ void RapRand( Rap *rap, int i, int cnt ){
 	} else {
 		iz = rap->iz;
 	}
-	//  int iz = (rand()&7);
+
 	RapSet( rap,
-		IMG_WIDTH * frand(),//rand()&1023,
-		IMG_HEIGHT* frand()+IMG_HEIGHT,//511+(rand()&511),
+		IMG_WIDTH * (0.05+frand()*0.9),
+		IMG_HEIGHT* frand()+IMG_HEIGHT,
 		iz+2.0,
 		iz,
-		frand()*2*M_PI,//(rand()&7)/8.0*2*M_PI,
+		frand()*2*M_PI,
 		frand()*0.5+0.5 * M_PI/60.0*0.5,
 		CV_RGB( 255, 128, 0 ) );
 }
@@ -207,10 +220,6 @@ void PasteEz( IplImage *pImg, IplImage *pPat, int x, int y, double a ){
 	int Pye = ( y+Ph > Ih )?(Ih-y):Ph;
 	int IR, IG, IB ;
 	int PR, PG, PB ;
-	//double X;
-	//double Y;
-	//double Z;
-
 
 	for( Py = Pys ; Py < Pye ; Py ++ ){
 		for( Px = Pxs ; Px < Pxe ; Px ++ ){
@@ -249,9 +258,6 @@ void Paste( IplImage *pImg, IplImage *pPat, int x, int y, double a ){
 	int IR, IG, IB ;
 	int PR, PG, PB ;
 	double X;
-	//double Y;
-	//double Z;
-
 
 	for( Py = Pys ; Py < Pye ; Py ++ ){
 		for( Px = Pxs ; Px < Pxe ; Px ++ ){
@@ -336,13 +342,21 @@ void SetBackground( IplImage *pImg, CvScalar c1, CvScalar c2, double a ){
 	}
 }
 
+int MouseRestart= 0;
+void MouseCallback(int event, int x, int y, int flags, void* param){
+   switch (event){
+   case cv::EVENT_LBUTTONDOWN:
+     MouseRestart = 1;
+   }
+}
 int sub_main( int argc , char *argv[] ){
 
 	CvSize sz = cvSize( IMG_WIDTH, IMG_HEIGHT );
-	int i;//, j ;
+	int i, loop_exit ;
 	IplImage *pPink   = cvLoadImage("pink4.bmp",CV_LOAD_IMAGE_UNCHANGED  );
 	IplImage *pBlue   = cvLoadImage("blue4.bmp",CV_LOAD_IMAGE_UNCHANGED  );
 	IplImage *pDeka   = cvLoadImage("pyachideka2.jpg",CV_LOAD_IMAGE_UNCHANGED  );
+    IplImage *pIshi   = cvLoadImage("ishikirin.jpg",CV_LOAD_IMAGE_UNCHANGED  );
 	//IplImage *pBlue   = cvLoadImage("test.bmp",CV_LOAD_IMAGE_UNCHANGED  );
 
 	
@@ -359,15 +373,60 @@ int sub_main( int argc , char *argv[] ){
 		Dh = (int)(pDeka->height*2.0/(i+3.0));
 		pPinks[i] = cvCreateImage( cvSize(Pw, Ph), IPL_DEPTH_8U, 3 );
 		cvResize( pPink, pPinks[i], CV_INTER_LINEAR );
+		Bw = (int)(pBlue->width *2.0/(i+3.0));
+		Bh = (int)(pBlue->height*2.0/(i+3.0));
 		pBlues[i] = cvCreateImage( cvSize(Bw, Bh), IPL_DEPTH_8U, 3 );
 		cvResize( pBlue, pBlues[i], CV_INTER_LINEAR );
-		pDekas[i] = cvCreateImage( cvSize(Dw, Dh), IPL_DEPTH_8U, 3 );
-		cvResize( pDeka, pDekas[i], CV_INTER_LINEAR );
+    if( !(i & 1) ){
+		  Dw = (int)(pDeka->width *2.0/(i+3.0));
+		  Dh = (int)(pDeka->height*2.0/(i+3.0));
+		  pDekas[i] = cvCreateImage( cvSize(Dw, Dh), IPL_DEPTH_8U, 3 );
+		  cvResize( pDeka, pDekas[i], CV_INTER_LINEAR );
+    }else{
+		  Dw = (int)(pIshi->width *2.0/(i+3.0));
+		  Dh = (int)(pIshi->height*2.0/(i+3.0));
+		  pDekas[i] = cvCreateImage( cvSize(Dw, Dh), IPL_DEPTH_8U, 3 );
+		  cvResize( pIshi, pDekas[i], CV_INTER_LINEAR );
+    }
 	}
 #if MON_EN
-	cvNamedWindow("Mon",CV_WINDOW_AUTOSIZE);
-#endif //MON_EN
+#if _WIN32 || _WIN64
+	//cvNamedWindow("Mon",CV_WINDOW_AUTOSIZE);
+  LPCSTR windowName = "Mon";
+  cvNamedWindow(windowName,CV_WINDOW_FULLSCREEN);
+  cvSetWindowProperty(windowName,CV_WND_PROP_FULLSCREEN,CV_WINDOW_FULLSCREEN);
+#ifdef FULL_SCREEN
+  // windowNameを持つウィンドウを検索
+  HWND windowHandle = ::FindWindowA(NULL, windowName);
 
+  if (NULL != windowHandle) {
+
+	  // ウィンドウスタイル変更（メニューバーなし、最前面）
+	  SetWindowLongPtr(windowHandle,  GWL_STYLE, WS_POPUP);
+	  SetWindowLongPtr(windowHandle, GWL_EXSTYLE, WS_EX_TOPMOST);
+
+	  // 最大化する
+	  ShowWindow(windowHandle, SW_MAXIMIZE);
+	  cvSetWindowProperty(windowName, CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN );
+
+	  // ディスプレイサイズを取得
+	  int mainDisplayWidth = GetSystemMetrics(SM_CXSCREEN);
+	  int mainDisplayHeight = GetSystemMetrics(SM_CYSCREEN);
+
+	  // クライアント領域をディスプレーに合わせる
+	  SetWindowPos(windowHandle, NULL,
+		  0, 0, mainDisplayWidth, mainDisplayWidth,
+		  SWP_FRAMECHANGED | SWP_NOZORDER);
+  }
+#endif // FULL_SCREEN
+#else  //_WIN32 || _WIN64
+  const char windowName[] = "Mon";
+  cvNamedWindow(windowName,CV_WINDOW_FULLSCREEN);
+  cvSetWindowProperty(windowName,CV_WND_PROP_FULLSCREEN,CV_WINDOW_FULLSCREEN);
+#endif //_WIN32 || _WIN64
+#endif //MON_EN
+  
+    cvSetMouseCallback("Mon", MouseCallback, (void *)NULL);
 #if CAM_EN
 	IplImage *pCam;
 	CvCapture *pCap=0;
@@ -395,13 +454,20 @@ int sub_main( int argc , char *argv[] ){
 	if( pSrcImg == 0 ){
 		printf("Error\n");
 	}
-
+  
+  int video_cnt=0;
+  
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  loop_exit = 0;
+  while( !loop_exit ){
 #if VW_EN
-	CvVideoWriter *pVW;
-	pVW = cvCreateVideoWriter ("rapunzel.avi", CV_FOURCC ('D', 'I', 'V', 'X'), FRAME_RATE, sz,1);
+    char VideoName[256];
+    CvVideoWriter *pVW;
+    sprintf( VideoName, "rapunzel%05d.avi",video_cnt);
+    pVW = cvCreateVideoWriter (VideoName, CV_FOURCC ('D', 'I', 'V', 'X'), FRAME_RATE, sz,1);
 #endif //VW_EN
 
-	RapList RL, RLD;
+    RapList RL, RLD;//, RLC;
 
 	RapListCreate( &RL, RAP_CNT );
 	RapListCreate( &RLD, Z_VAR_CNT );
@@ -429,38 +495,57 @@ int sub_main( int argc , char *argv[] ){
 		DrawRap2Ez( pSrcImg, &RLD, pDekas );
 #endif //DEKA_MODE
 #endif //CAM_EN
+      
 
-		//DrawRap( pSrcImg, &RL );
-		//DrawRap2( pSrcImg, &RL, pPinks );
-		DrawRap3( pSrcImg, &RL, pPinks, pBlues );
-		//DrawRap2( pSrcImg, &RLD, pDekas );
+      //DrawRap( pSrcImg, &RL );
+      //DrawRap2( pSrcImg, &RL, pPinks );
+      DrawRap3( pSrcImg, &RL, pPinks, pBlues );
+      //DrawRap2( pSrcImg, &RLD, pDekas );
 
-		// Update State 
-		RapListMove( &RL );
-		RapListMove( &RLD );
+      // Update State 
+      RapListMove( &RL );
+      RapListMove( &RLD );
+      //RapListMove( &RLC );
 #if VW_EN
-		cvWriteFrame( pVW, pSrcImg );
+      cvWriteFrame( pVW, pSrcImg );
 #endif //VW_EN
 #if MON_EN
-		cvShowImage( "Mon", pSrcImg );
+      cvShowImage( "Mon", pSrcImg );
 #endif //MON_EN
 
-		//if( cvWaitKey(1000/24) >= 0 ) break;
-		if( cvWaitKey(1) >= 0 ) break;
+      //if( cvWaitKey(1000/24) >= 0 ) break;
+      if( cvWaitKey(1) >= 0 ){
+        loop_exit=1;
+        break;
+      }
+      if( MouseRestart ){
+        MouseRestart=0;
+        break;
+      }
 
-	}
+
+    }
+	RapListRelease( &RL  );
+	RapListRelease( &RLD );
+    //RapListRelease( &RLC );
+#if VW_EN
+    video_cnt ++ ;
+	cvReleaseVideoWriter( &pVW );
+#endif //VW_EN
+
+  }//loop_exit
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+
 #if MON_EN
 	cvDestroyWindow("Mon");
 #endif
-
-	RapListRelease( &RL  );
-	RapListRelease( &RLD );
 
 	cvReleaseImage( &pSrcImg );
 
 	cvReleaseImage( &pPink );
 	cvReleaseImage( &pBlue );
 	cvReleaseImage( &pDeka );
+    cvReleaseImage( &pIshi );
 	//cvReleaseImage( &pCam  );
 	for( i = 0 ; i < Z_VAR_CNT ; i++ ){
 		cvReleaseImage( &pPinks[i] );
@@ -471,15 +556,11 @@ int sub_main( int argc , char *argv[] ){
 	free( pBlues );
 	free( pDekas );
 
-#if VW_EN
-	cvReleaseVideoWriter( &pVW );
-#endif //VW_EN
 
 #if CAM_EN
 	cvReleaseCapture( &pCap );
 	for( i = 0 ; i < Z_VAR_CNT ; i++ ){
-		cvReleaseImage( &pCams [i] );
-	}
+		cvReleaseImage( &pCams [i] );	}
 	free( pCams  );  
 #endif//CAM_EN
 
