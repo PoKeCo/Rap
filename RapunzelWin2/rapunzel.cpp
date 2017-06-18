@@ -34,13 +34,15 @@
 
 #define Z_VAR_CNT 10
 
-#if 1
+#if 0
 #define IMG_HEIGHT 1080
 #define IMG_WIDTH  1920
 #define RAP_CNT  400
 #else
-#define IMG_HEIGHT 512
-#define IMG_WIDTH  1024
+//#define IMG_HEIGHT 512
+//#define IMG_WIDTH  1024
+#define IMG_HEIGHT 540
+#define IMG_WIDTH  1920
 #define RAP_CNT  200
 #endif
 
@@ -50,13 +52,16 @@
 #define CAM_EN 0
 #define VW_EN 1
 #define MON_EN 1
+#define FALL_MODE 1
 
 typedef struct _Rap{
+	int    id;
 	double x;
 	double y;
 	double z;
 	double a;  
 	double v;  
+	double v_prev;  
 	int iz;
 	double th;
 	double dth; 
@@ -75,6 +80,7 @@ void RapSet( Rap *rap, double x, double y, double z, int iz, double th, double d
 	rap->iz  = iz;
 	rap->th  = th;
 	rap->v   = 0;
+	rap->v_prev = 0;
 
 	rap->dth = M_PI/60.0*0.5 ;
 	int i;
@@ -101,7 +107,7 @@ void RapRand( Rap *rap, int i, int cnt ){
 }
 
 void RapMove( Rap *rap ){
-	double zs = 64.0;
+	double zs = 64.0;	
 	if( rap->flag ){
 		rap->x -= 4.0/rap->z*(sin(rap->th));
 		rap->y -= 16.0/rap->z * 0.25;
@@ -109,19 +115,31 @@ void RapMove( Rap *rap ){
 		//rap->th+= M_PI/60.0*0.5;
 		rap->th += rap->dth ;	  
 	}else{  
-		rap->v = rap->v + 2.0;	   
+		//rap->v = rap->v + 2.0;	   
+		rap->v = rap->v + 1.0;	   
 		rap->x -= rap->dth-0.5 * M_PI/60.0*0.5;
 		rap->y = rap->y + rap->v ;
-		if( rap->y > 1080 ){
+		//if( rap->y > 1080 ){
+		if( rap->y > IMG_HEIGHT*1.5 ){
 			rap->y = rap->y - rap->v;
 			rap->v = - 0.8 * rap->v ; 
 		}
 		rap->z -= 0;
+		//if( rap->v_prev < 0 && rap->v > 0 && rap->y > 950 ){
+		if( rap->v_prev < 0 && rap->v > 0 && rap->y > IMG_HEIGHT*1.0 ){
+			rap->flag = 1;
+			RapRand( rap, -1, 1 );
+		}
 	}
-	if( rap->y+4*zs/rap->z < 0 ){
-		//rap->flag = 0;
+	if( rap->y+5*zs/rap->z < 0 ){
+#if FALL_MODE
+		rap->flag = 0;
+#else
 		RapRand( rap, -1, 1 );
+#endif
 	}
+
+	rap->v_prev = rap->v;
 
 	//rap->col.val[2] = 32.0*sin( rap->th*10.0 ) + (255.0-32.0);
 	//rap->col.val[1] = 16.0*sin( rap->th*10.0 ) + (128.0-16.0);
@@ -147,6 +165,7 @@ void RapListCreate( RapList *pRL, int count ){
 	for( i = 0 ; i < count ; i ++ ){
 		RapRand( &pRL->rap[i], i, count );
 		pRL->rap[i].flag= 1;
+		pRL->rap[i].id  = i;
 	}
 } 
 
@@ -188,7 +207,7 @@ void PasteEz( IplImage *pImg, IplImage *pPat, int x, int y, double a ){
 	int Pye = ( y+Ph > Ih )?(Ih-y):Ph;
 	int IR, IG, IB ;
 	int PR, PG, PB ;
-	double X;
+	//double X;
 	//double Y;
 	//double Z;
 
@@ -253,9 +272,11 @@ void Paste( IplImage *pImg, IplImage *pPat, int x, int y, double a ){
 				pImg->imageData[ Ip+1 ] = (int)MAX(PG*a,IG);
 				pImg->imageData[ Ip+2 ] = (int)MAX(PR*a,IR);
 #else
-				pImg->imageData[ Ip+0 ] = (int)((X>0.3)?PB*a:MIN(255,IB+PB) );
-				pImg->imageData[ Ip+1 ] = (int)((X>0.3)?PG*a:MIN(255,IG+PG) );
-				pImg->imageData[ Ip+2 ] = (int)((X>0.3)?PR*a:MIN(255,IR+PR) );
+				//double th = 0.3;
+				double th = 0.4;
+				pImg->imageData[ Ip+0 ] = (int)((X>th)?PB*a:MIN(255,IB+PB) );
+				pImg->imageData[ Ip+1 ] = (int)((X>th)?PG*a:MIN(255,IG+PG) );
+				pImg->imageData[ Ip+2 ] = (int)((X>th)?PR*a:MIN(255,IR+PR) );
 #endif
 
 			}
@@ -298,7 +319,8 @@ void SetBackground( IplImage *pImg, CvScalar c1, CvScalar c2, double a ){
 	int Width  = pImg->width;
 	int x, y, p, i;
 	//CvScalar d = CV_RGB(128,64,64);
-	CvScalar d = CV_RGB(64,32,32);
+	//CvScalar d = CV_RGB(64,32,32);
+	CvScalar d = CV_RGB(0,0,0);
 	a = MIN( 1.0, a );
 	for( y = 0 ; y < Height ; y ++ ){
 		for( i = 0 ; i < 4 ; i ++ ){
@@ -317,9 +339,9 @@ void SetBackground( IplImage *pImg, CvScalar c1, CvScalar c2, double a ){
 int sub_main( int argc , char *argv[] ){
 
 	CvSize sz = cvSize( IMG_WIDTH, IMG_HEIGHT );
-	int i, j ;
-	IplImage *pPink   = cvLoadImage("pink1.bmp",CV_LOAD_IMAGE_UNCHANGED  );
-	IplImage *pBlue   = cvLoadImage("blue1.bmp",CV_LOAD_IMAGE_UNCHANGED  );
+	int i;//, j ;
+	IplImage *pPink   = cvLoadImage("pink4.bmp",CV_LOAD_IMAGE_UNCHANGED  );
+	IplImage *pBlue   = cvLoadImage("blue4.bmp",CV_LOAD_IMAGE_UNCHANGED  );
 	IplImage *pDeka   = cvLoadImage("pyachideka2.jpg",CV_LOAD_IMAGE_UNCHANGED  );
 	//IplImage *pBlue   = cvLoadImage("test.bmp",CV_LOAD_IMAGE_UNCHANGED  );
 
@@ -329,10 +351,10 @@ int sub_main( int argc , char *argv[] ){
 	IplImage **pDekas = (IplImage**)malloc(sizeof(IplImage*) * Z_VAR_CNT );
 	int Pw, Ph, Bw, Bh, Dw, Dh;
 	for( i = 0 ; i < Z_VAR_CNT ; i++ ){
-		Pw = (int)(pPink->width *2.0/(i+3.0));
-		Ph = (int)(pPink->height*2.0/(i+3.0));
-		Bw = (int)(pBlue->width *2.0/(i+3.0));
-		Bh = (int)(pBlue->height*2.0/(i+3.0));
+		Pw = (int)(pPink->width *1.0/(i+2.0));
+		Ph = (int)(pPink->height*1.0/(i+2.0));
+		Bw = (int)(pBlue->width *1.0/(i+2.0));
+		Bh = (int)(pBlue->height*1.0/(i+2.0));
 		Dw = (int)(pDeka->width *2.0/(i+3.0));
 		Dh = (int)(pDeka->height*2.0/(i+3.0));
 		pPinks[i] = cvCreateImage( cvSize(Pw, Ph), IPL_DEPTH_8U, 3 );
@@ -390,7 +412,8 @@ int sub_main( int argc , char *argv[] ){
 		//cvSetZero( pSrcImg );
 		a = ((double)i)/FRAME_CNT;
 		//printf("a=%lf\n",a);
-		SetBackground( pSrcImg, CV_RGB( 23, 55, 94 ), CV_RGB( 0, 0, 0 ), a );
+		//SetBackground( pSrcImg, CV_RGB( 23*2, 55*2, 94*2 ), CV_RGB( 23, 55, 94 ), a );
+		SetBackground( pSrcImg, CV_RGB( 87*0.5, 38*0.5, 108*0.5 ), CV_RGB( 180*0.5, 155*0.5, 214*0.5 ), a );
 
 
 #if CAM_EN
@@ -402,7 +425,9 @@ int sub_main( int argc , char *argv[] ){
 		//Paste( pSrcImg, pCam, 0 , 0, 1.0 );
 		DrawRap2Ez( pSrcImg, &RLD, pCams );
 #else //CAM_EN
+#if DEKA_MODE
 		DrawRap2Ez( pSrcImg, &RLD, pDekas );
+#endif //DEKA_MODE
 #endif //CAM_EN
 
 		//DrawRap( pSrcImg, &RL );
