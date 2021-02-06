@@ -15,6 +15,8 @@
 #include <math.h>
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
+#include <opencv2/imgcodecs/imgcodecs_c.h>
+#include <opencv2/videoio/videoio_c.h>
 
 #ifdef M_PI
 #define PI M_PI
@@ -259,11 +261,12 @@ int main( int argc , char *argv[] ){
     printf("Error\n");
   }
   CvPoint ps, pe;
-  CvCapture *cap=0;
+  
+  //CvCapture *cap=0;
   //cap = cvCreateCameraCapture( 0 ) ;
   //if( cap == 0 ){
   //  printf("Capture failed\n");
-  // }
+  //}
   //cvSetCaptureProperty( cap, CV_CAP_PROP_FRAME_WIDTH, 720 );
   //cvSetCaptureProperty( cap, CV_CAP_PROP_FRAME_HEIGHT, 480 );
   //cvNamedWindow("Cap",CV_WINDOW_AUTOSIZE);
