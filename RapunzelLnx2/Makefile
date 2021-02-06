@@ -1,10 +1,11 @@
 TARGET = rapunzel
-OBJS = rapunzel.o
-SRCS = rapunzel.c
+OBJS = main.o rapunzel.o
+SRCS = main.cpp rapunzel.cpp
 
 CFLAGS =  -O3
 
-CC = gcc
+#CC = gcc
+CC = g++
 
 #INC = -I/usr/local/include/opencv
 INC = -I/opt/ros/kinetic/include/opencv-3.3.1-dev
