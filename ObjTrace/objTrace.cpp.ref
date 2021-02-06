@@ -1,0 +1,33 @@
+#include "opencv2/opencv.hpp"
+#include "opencv2/core/utility.hpp"
+#include "opencv2/bgsegm.hpp"
+
+int main(int argc, char *argv[] )
+{
+    // 動画ファイルの読み込み
+    cv::VideoCapture cap = cv::VideoCapture("video.avi");
+    // 背景差分器の生成
+    cv::Ptr<cv::BackgroundSubtractor> bgfs = cv::bgsegm::createBackgroundSubtractorGSOC();
+    //cv::Ptr<cv::BackgroundSubtractor> bgfs = cv::bgsegm::createBackgroundSubtractorCNT();
+    //cv::Ptr<cv::BackgroundSubtractor> bgfs = cv::bgsegm::createBackgroundSubtractorGMG();
+    //cv::Ptr<cv::BackgroundSubtractor> bgfs = cv::bgsegm::createBackgroundSubtractorLSBP();
+    //cv::Ptr<cv::BackgroundSubtractor> bgfs = cv::bgsegm::createBackgroundSubtractorMOG();
+    //cv::Ptr<cv::BackgroundSubtractor> bgfs = cv::createBackgroundSubtractorMOG2();
+    //cv::Ptr<cv::BackgroundSubtractor> bgfs = cv::createBackgroundSubtractorKNN();
+
+    while (cv::waitKey(1) == -1)
+    {
+        cv::Mat frame, foreGroundMask, segm;
+
+        cap >> frame;
+        if (frame.empty())
+            break;
+
+        bgfs->apply(frame, foreGroundMask);
+        frame.convertTo(segm, 0, 0.5);
+        cv::add(frame, cv::Scalar(100, 100, 0), segm, foreGroundMask);
+    
+        cv::imshow("output", segm);
+    }
+    return 0;
+}
